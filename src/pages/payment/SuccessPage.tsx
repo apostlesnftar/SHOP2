@@ -59,6 +59,7 @@ const PaymentSuccessPage: React.FC = () => {
             .single();
 
           if (orderError) {
+            console.error('Error retrieving order data:', orderError);
             throw orderError;
           }
 
@@ -77,6 +78,7 @@ const PaymentSuccessPage: React.FC = () => {
               .eq('order_number', order);
 
             if (updateError) {
+              console.error('Error updating order status:', updateError);
               throw updateError;
             }
           }

@@ -211,16 +211,13 @@ const SharedOrderPage: React.FC = () => {
         return;
       }
 
-      // Process payment using Supabase RPC function with the current user's ID as referrer_id if available
+      // Call the process_friend_payment function without the referrer_id parameter
       const { data, error } = await supabase.rpc('process_friend_payment', {
         p_share_id: shareId,
         p_payment_method: selectedPaymentMethod
       });
 
-      if (error) {
-        console.error('Payment RPC error:', error);
-        throw error;
-      }
+      if (error) throw error;
       
       if (!data || !data.success) {
         console.error('Payment processing failed:', data?.error || 'Unknown error', data);

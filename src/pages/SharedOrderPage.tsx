@@ -106,8 +106,7 @@ const SharedOrderPage: React.FC = () => {
 
       const hours = Math.floor(diff / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-     setTimeLeft(`${hours}h ${minutes}m`);
-
+      setTimeLeft(`${hours}h ${minutes}m`);
     };
 
     updateTimeLeft();
@@ -190,7 +189,7 @@ const SharedOrderPage: React.FC = () => {
     );
 
     if (!selectedMethod) {
-      toast.error(Invalid payment method: ${selectedPaymentMethod});
+      toast.error(`Invalid payment method: ${selectedPaymentMethod}`);
       return;
     }
 
@@ -201,11 +200,11 @@ const SharedOrderPage: React.FC = () => {
         console.log('Processing Acacia Pay payment');
         const result = await createAcaciaPayOrder(
           order.total,
-          S${shareId},
+          `S${shareId}`,
           {
-            successUrl: ${window.location.origin}/payment/success?share=${shareId},
+            successUrl: `${window.location.origin}/payment/success?share=${shareId}`,
             subject: 'Shared Order Payment',
-            description: Payment for shared order ${shareId}
+            description: `Payment for shared order ${shareId}`
           }
         );
         
@@ -322,11 +321,11 @@ const SharedOrderPage: React.FC = () => {
                       <button
                         key={method.method}
                         type="button"
-                        className={border rounded-lg p-4 flex items-center justify-center gap-2 ${
+                        className={`border rounded-lg p-4 flex items-center justify-center gap-2 ${
                           selectedPaymentMethod === method.method 
                             ? 'border-blue-600 bg-blue-50' 
                             : 'border-gray-200 hover:border-gray-300'
-                        }}
+                        }`}
                         onClick={() => setSelectedPaymentMethod(method.method)}
                       >
                         {method.icon_url ? (

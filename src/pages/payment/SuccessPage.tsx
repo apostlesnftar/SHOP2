@@ -15,10 +15,16 @@ const PaymentSuccessPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isPaymentProcessed, setIsPaymentProcessed] = useState(false); // New state to track payment processing
+
+  // Check if payment has been processed to avoid reprocessing
+  const isPaymentProcessed = localStorage.getItem('isPaymentProcessed') === 'true';
 
   useEffect(() => {
-    if (isPaymentProcessed) return; // Skip if payment has already been processed
+    if (isPaymentProcessed) {
+      setIsLoading(false); // Skip processing if payment has already been handled
+      return;
+    }
+
     const processPayment = async () => {
       try {
         setIsLoading(true);
@@ -46,8 +52,8 @@ const PaymentSuccessPage: React.FC = () => {
 
           setOrderNumber(data.order_number);
           clearCart(); // Clear the cart after successful payment
+          localStorage.setItem('isPaymentProcessed', 'true'); // Mark payment as processed
           toast.success('Payment successful!');
-          setIsPaymentProcessed(true); // Mark payment as processed
           navigate('/'); // Redirect to homepage
         } else {
           // Regular order success
@@ -88,8 +94,8 @@ const PaymentSuccessPage: React.FC = () => {
 
           setOrderNumber(orderData.order_number);
           clearCart(); // Clear the cart after successful payment
+          localStorage.setItem('isPaymentProcessed', 'true'); // Mark payment as processed
           toast.success('Payment successful!');
-          setIsPaymentProcessed(true); // Mark payment as processed
           navigate('/'); // Redirect to homepage
         }
       } catch (err) {
@@ -102,7 +108,7 @@ const PaymentSuccessPage: React.FC = () => {
     };
     
     processPayment();
-  }, [searchParams, clearCart, isPaymentProcessed, navigate]);
+  }, [searchParams, clearCart, navigate, isPaymentProcessed]);
 
   if (isLoading) {
     return (

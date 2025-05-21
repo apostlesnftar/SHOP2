@@ -16,12 +16,15 @@ const PaymentSuccessPage: React.FC = () => {
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const shareId = searchParams.get('share');
+
   // Check if payment has been processed to avoid reprocessing
   const isPaymentProcessed = localStorage.getItem('isPaymentProcessed') === 'true';
 
   useEffect(() => {
+    // If payment has already been processed, skip processing
     if (isPaymentProcessed) {
-      setIsLoading(false); // Skip processing if payment has already been handled
+      setIsLoading(false);
       return;
     }
 
@@ -29,7 +32,6 @@ const PaymentSuccessPage: React.FC = () => {
       try {
         setIsLoading(true);
         
-        const shareId = searchParams.get('share');
         if (shareId) {
           console.log('Processing shared order payment:', shareId);
 
@@ -55,48 +57,6 @@ const PaymentSuccessPage: React.FC = () => {
           localStorage.setItem('isPaymentProcessed', 'true'); // Mark payment as processed
           toast.success('Payment successful!');
           navigate('/'); // Redirect to homepage
-        } else {
-          // Regular order success
-          const order = searchParams.get('order');
-          if (!order) {
-            throw new Error('No order information found');
-          }
-
-          // Get order details
-          const { data: orderData, error: orderError } = await supabase
-            .from('orders')
-            .select('order_number, status, payment_status')
-            .eq('order_number', order)
-            .single();
-
-          if (orderError) {
-            throw orderError;
-          }
-
-          if (!orderData) {
-            throw new Error('Order not found');
-          }
-
-          // Update order status if needed
-          if (orderData.payment_status !== 'completed') {
-            const { error: updateError } = await supabase
-              .from('orders')
-              .update({
-                payment_status: 'completed',
-                status: 'processing'
-              })
-              .eq('order_number', order);
-
-            if (updateError) {
-              throw updateError;
-            }
-          }
-
-          setOrderNumber(orderData.order_number);
-          clearCart(); // Clear the cart after successful payment
-          localStorage.setItem('isPaymentProcessed', 'true'); // Mark payment as processed
-          toast.success('Payment successful!');
-          navigate('/'); // Redirect to homepage
         }
       } catch (err) {
         console.error('Error processing payment success:', err);
@@ -106,9 +66,9 @@ const PaymentSuccessPage: React.FC = () => {
         setIsLoading(false);
       }
     };
-    
+
     processPayment();
-  }, [searchParams, clearCart, navigate, isPaymentProcessed]);
+  }, [searchParams, shareId, clearCart, navigate, isPaymentProcessed]);
 
   if (isLoading) {
     return (

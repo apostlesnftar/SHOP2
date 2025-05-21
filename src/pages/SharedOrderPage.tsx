@@ -211,12 +211,11 @@ const SharedOrderPage: React.FC = () => {
         return;
       }
 
-      // Process payment using Supabase RPC function with explicit null for referrer_id
-      // This ensures we're not passing an ambiguous column reference
+      // Process payment using Supabase RPC function with the current user's ID as referrer_id if available
       const { data, error } = await supabase.rpc('process_friend_payment', {
         p_share_id: shareId,
         p_payment_method: selectedPaymentMethod,
-        p_referrer_id: null // Explicitly pass null to avoid ambiguity
+        p_referrer_id: user ? user.id : null // Pass user ID if available, otherwise null
       });
 
       if (error) {

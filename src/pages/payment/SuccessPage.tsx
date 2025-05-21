@@ -15,21 +15,19 @@ const PaymentSuccessPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isPaymentProcessed, setIsPaymentProcessed] = useState(false); // 处理支付的标志位
-  
-  useEffect(() => {
-    // 如果已经处理过支付，跳过后续执行
-    if (isPaymentProcessed) return;
+  const [isPaymentProcessed, setIsPaymentProcessed] = useState(false); // New state to track payment processing
 
+  useEffect(() => {
+    if (isPaymentProcessed) return; // Skip if payment has already been processed
     const processPayment = async () => {
       try {
         setIsLoading(true);
         
         const shareId = searchParams.get('share');
         if (shareId) {
-          // 处理共享订单支付
           console.log('Processing shared order payment:', shareId);
 
+          // Process the shared order payment
           const { data, error } = await supabase.rpc('process_shared_order_payment', {
             p_share_id: shareId,
             p_payment_method: 'acacia_pay',
@@ -49,14 +47,16 @@ const PaymentSuccessPage: React.FC = () => {
           setOrderNumber(data.order_number);
           clearCart(); // Clear the cart after successful payment
           toast.success('Payment successful!');
+          setIsPaymentProcessed(true); // Mark payment as processed
+          navigate('/'); // Redirect to homepage
         } else {
-          // 常规订单支付
+          // Regular order success
           const order = searchParams.get('order');
           if (!order) {
             throw new Error('No order information found');
           }
 
-          // 获取订单信息
+          // Get order details
           const { data: orderData, error: orderError } = await supabase
             .from('orders')
             .select('order_number, status, payment_status')
@@ -64,7 +64,6 @@ const PaymentSuccessPage: React.FC = () => {
             .single();
 
           if (orderError) {
-            console.error('Error retrieving order data:', orderError);
             throw orderError;
           }
 
@@ -72,7 +71,7 @@ const PaymentSuccessPage: React.FC = () => {
             throw new Error('Order not found');
           }
 
-          // 如果订单状态不是已完成，则更新订单状态
+          // Update order status if needed
           if (orderData.payment_status !== 'completed') {
             const { error: updateError } = await supabase
               .from('orders')
@@ -83,7 +82,6 @@ const PaymentSuccessPage: React.FC = () => {
               .eq('order_number', order);
 
             if (updateError) {
-              console.error('Error updating order status:', updateError);
               throw updateError;
             }
           }
@@ -91,9 +89,9 @@ const PaymentSuccessPage: React.FC = () => {
           setOrderNumber(orderData.order_number);
           clearCart(); // Clear the cart after successful payment
           toast.success('Payment successful!');
+          setIsPaymentProcessed(true); // Mark payment as processed
+          navigate('/'); // Redirect to homepage
         }
-
-        setIsPaymentProcessed(true); // 设置支付已处理标志
       } catch (err) {
         console.error('Error processing payment success:', err);
         setError(err instanceof Error ? err.message : 'An error occurred');
@@ -104,7 +102,7 @@ const PaymentSuccessPage: React.FC = () => {
     };
     
     processPayment();
-  }, [searchParams, isPaymentProcessed, clearCart]); // 只有在 isPaymentProcessed 改变时才触发
+  }, [searchParams, clearCart, isPaymentProcessed, navigate]);
 
   if (isLoading) {
     return (
@@ -157,24 +155,6 @@ const PaymentSuccessPage: React.FC = () => {
               </p>
             </div>
           )}
-          
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button
-              variant="outline"
-              onClick={() => navigate('/orders')}
-              leftIcon={<Package className="h-5 w-5" />}
-            >
-              View Orders
-            </Button>
-            
-            <Button
-              onClick={() => navigate('/products')}
-              rightIcon={<ArrowRight className="h-5 w-5" />}
-              leftIcon={<ShoppingBag className="h-5 w-5" />}
-            >
-              Continue Shopping
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>

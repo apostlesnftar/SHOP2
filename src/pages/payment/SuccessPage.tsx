@@ -27,7 +27,7 @@ const PaymentSuccessPage: React.FC = () => {
           console.log('Processing shared order payment:', shareId);
           
           // Process the shared order payment
-          const { data, error } = await supabase.rpc('process_shared_order_payment_, {
+          const { data, error } = await supabase.rpc('process_shared_order_payment', {
             p_share_id: shareId,
             p_payment_method: 'acacia_pay',
             p_gateway_id: null

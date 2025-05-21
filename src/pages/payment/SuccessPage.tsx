@@ -15,15 +15,19 @@ const PaymentSuccessPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isPaymentProcessed, setIsPaymentProcessed] = useState(false); // 处理支付的标志位
   
   useEffect(() => {
+    // 如果已经处理过支付，跳过后续执行
+    if (isPaymentProcessed) return;
+
     const processPayment = async () => {
       try {
         setIsLoading(true);
         
         const shareId = searchParams.get('share');
         if (shareId) {
-          // Process the shared order payment
+          // 处理共享订单支付
           console.log('Processing shared order payment:', shareId);
 
           const { data, error } = await supabase.rpc('process_shared_order_payment', {
@@ -46,13 +50,13 @@ const PaymentSuccessPage: React.FC = () => {
           clearCart(); // Clear the cart after successful payment
           toast.success('Payment successful!');
         } else {
-          // Regular order success
+          // 常规订单支付
           const order = searchParams.get('order');
           if (!order) {
             throw new Error('No order information found');
           }
 
-          // Get order details
+          // 获取订单信息
           const { data: orderData, error: orderError } = await supabase
             .from('orders')
             .select('order_number, status, payment_status')
@@ -60,6 +64,7 @@ const PaymentSuccessPage: React.FC = () => {
             .single();
 
           if (orderError) {
+            console.error('Error retrieving order data:', orderError);
             throw orderError;
           }
 
@@ -67,7 +72,7 @@ const PaymentSuccessPage: React.FC = () => {
             throw new Error('Order not found');
           }
 
-          // Update order status if needed
+          // 如果订单状态不是已完成，则更新订单状态
           if (orderData.payment_status !== 'completed') {
             const { error: updateError } = await supabase
               .from('orders')
@@ -78,6 +83,7 @@ const PaymentSuccessPage: React.FC = () => {
               .eq('order_number', order);
 
             if (updateError) {
+              console.error('Error updating order status:', updateError);
               throw updateError;
             }
           }
@@ -86,6 +92,8 @@ const PaymentSuccessPage: React.FC = () => {
           clearCart(); // Clear the cart after successful payment
           toast.success('Payment successful!');
         }
+
+        setIsPaymentProcessed(true); // 设置支付已处理标志
       } catch (err) {
         console.error('Error processing payment success:', err);
         setError(err instanceof Error ? err.message : 'An error occurred');
@@ -96,7 +104,7 @@ const PaymentSuccessPage: React.FC = () => {
     };
     
     processPayment();
-  }, [searchParams, clearCart]);
+  }, [searchParams, isPaymentProcessed, clearCart]); // 只有在 isPaymentProcessed 改变时才触发
 
   if (isLoading) {
     return (

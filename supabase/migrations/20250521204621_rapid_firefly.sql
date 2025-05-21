@@ -1,5 +1,5 @@
 -- Drop the existing function if it exists
-DROP FUNCTION IF EXISTS process_friend_payment(p_share_id text, p_payment_method text);
+DROP FUNCTION IF EXISTS process_friend_payment(text, text);
 
 -- Recreate the function with explicit table aliases and variable assignments
 CREATE OR REPLACE FUNCTION process_friend_payment(
@@ -28,9 +28,6 @@ DECLARE
 BEGIN
   -- Normalize payment method (lowercase and replace spaces with underscores)
   v_payment_method_normalized := LOWER(REPLACE(p_payment_method, ' ', '_'));
-  
-  -- Log the payment method for debugging
-  RAISE LOG 'Processing payment with method: % (normalized: %)', p_payment_method, v_payment_method_normalized;
   
   -- Get shared order with explicit column selection and aliases to avoid ambiguity
   SELECT 
@@ -224,3 +221,64 @@ $$;
 -- Grant execute permissions
 GRANT EXECUTE ON FUNCTION process_friend_payment(text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION process_friend_payment(text, text) TO anon;
+
+-- Add policies for anonymous users to access shared orders if they don't exist
+DO $$
+BEGIN
+  -- Check if the policy exists before creating it
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE schemaname = 'public' 
+    AND tablename = 'shared_orders' 
+    AND policyname = 'Allow anon select on shared_orders'
+  ) THEN
+    CREATE POLICY "Allow anon select on shared_orders" 
+    ON shared_orders 
+    FOR SELECT 
+    TO anon 
+    USING (true);
+  END IF;
+
+  -- Check if the policy exists before creating it
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE schemaname = 'public' 
+    AND tablename = 'shared_orders' 
+    AND policyname = 'Allow anon update on shared_orders'
+  ) THEN
+    CREATE POLICY "Allow anon update on shared_orders" 
+    ON shared_orders 
+    FOR UPDATE 
+    TO anon 
+    USING (true);
+  END IF;
+
+  -- Check if the policy exists before creating it
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE schemaname = 'public' 
+    AND tablename = 'orders' 
+    AND policyname = 'Allow anon select on orders'
+  ) THEN
+    CREATE POLICY "Allow anon select on orders" 
+    ON orders 
+    FOR SELECT 
+    TO anon 
+    USING (true);
+  END IF;
+
+  -- Check if the policy exists before creating it
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE schemaname = 'public' 
+    AND tablename = 'orders' 
+    AND policyname = 'Allow anon update on orders'
+  ) THEN
+    CREATE POLICY "Allow anon update on orders" 
+    ON orders 
+    FOR UPDATE 
+    TO anon 
+    USING (true);
+  END IF;
+END
+$$;

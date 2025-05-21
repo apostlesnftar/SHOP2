@@ -23,8 +23,9 @@ const PaymentSuccessPage: React.FC = () => {
         
         const shareId = searchParams.get('share');
         if (shareId) {
-          // 处理共享订单支付
+          // Process the shared order payment
           console.log('Processing shared order payment:', shareId);
+
           const { data, error } = await supabase.rpc('process_shared_order_payment', {
             p_share_id: shareId,
             p_payment_method: 'acacia_pay',
@@ -45,13 +46,13 @@ const PaymentSuccessPage: React.FC = () => {
           clearCart(); // Clear the cart after successful payment
           toast.success('Payment successful!');
         } else {
-          // 常规订单支付
+          // Regular order success
           const order = searchParams.get('order');
           if (!order) {
             throw new Error('No order information found');
           }
 
-          // 获取订单信息
+          // Get order details
           const { data: orderData, error: orderError } = await supabase
             .from('orders')
             .select('order_number, status, payment_status')
@@ -59,7 +60,6 @@ const PaymentSuccessPage: React.FC = () => {
             .single();
 
           if (orderError) {
-            console.error('Error retrieving order data:', orderError);
             throw orderError;
           }
 
@@ -67,7 +67,7 @@ const PaymentSuccessPage: React.FC = () => {
             throw new Error('Order not found');
           }
 
-          // 如果订单状态不是已完成，则更新订单状态
+          // Update order status if needed
           if (orderData.payment_status !== 'completed') {
             const { error: updateError } = await supabase
               .from('orders')
@@ -78,7 +78,6 @@ const PaymentSuccessPage: React.FC = () => {
               .eq('order_number', order);
 
             if (updateError) {
-              console.error('Error updating order status:', updateError);
               throw updateError;
             }
           }

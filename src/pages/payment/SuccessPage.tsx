@@ -21,14 +21,16 @@ const PaymentSuccessPage: React.FC = () => {
       try {
         setIsLoading(true);
         
+        // 获取 share 参数，判断是否是共享订单支付
         const shareId = searchParams.get('share');
         if (shareId) {
           // 处理共享订单支付
           console.log('Processing shared order payment:', shareId);
+          
           const { data, error } = await supabase.rpc('process_shared_order_payment', {
             p_share_id: shareId,
-            p_payment_method: 'acacia_pay',
-            p_gateway_id: null
+            p_payment_method: 'acacia_pay', // 根据实际的支付方式填写
+            p_gateway_id: null // 根据需要填写
           });
 
           if (error) {
@@ -42,7 +44,7 @@ const PaymentSuccessPage: React.FC = () => {
           }
 
           setOrderNumber(data.order_number);
-          clearCart(); // Clear the cart after successful payment
+          clearCart(); // 支付成功后清空购物车
           toast.success('Payment successful!');
         } else {
           // 常规订单支付
@@ -84,7 +86,7 @@ const PaymentSuccessPage: React.FC = () => {
           }
 
           setOrderNumber(orderData.order_number);
-          clearCart(); // Clear the cart after successful payment
+          clearCart(); // 支付成功后清空购物车
           toast.success('Payment successful!');
         }
       } catch (err) {

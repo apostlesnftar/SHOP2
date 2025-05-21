@@ -21,54 +21,52 @@ const PaymentSuccessPage: React.FC = () => {
       try {
         setIsLoading(true);
         
-        // Check if this is a shared order payment
         const shareId = searchParams.get('share');
         if (shareId) {
+          // 处理共享订单支付
           console.log('Processing shared order payment:', shareId);
-          
-          // Process the shared order payment
           const { data, error } = await supabase.rpc('process_shared_order_payment', {
             p_share_id: shareId,
             p_payment_method: 'acacia_pay',
             p_gateway_id: null
           });
-          
+
           if (error) {
             console.error('Error processing shared payment:', error);
             throw error;
           }
-          
+
           if (!data.success) {
             console.error('Failed to process shared payment:', data.error);
             throw new Error(data.error || 'Failed to process payment');
           }
-          
+
           setOrderNumber(data.order_number);
           clearCart(); // Clear the cart after successful payment
           toast.success('Payment successful!');
         } else {
-          // Regular order success
+          // 常规订单支付
           const order = searchParams.get('order');
           if (!order) {
             throw new Error('No order information found');
           }
-          
-          // Get order details
+
+          // 获取订单信息
           const { data: orderData, error: orderError } = await supabase
             .from('orders')
             .select('order_number, status, payment_status')
             .eq('order_number', order)
             .single();
-          
+
           if (orderError) {
             throw orderError;
           }
-          
+
           if (!orderData) {
             throw new Error('Order not found');
           }
-          
-          // Update order status if needed
+
+          // 如果订单状态不是已完成，则更新订单状态
           if (orderData.payment_status !== 'completed') {
             const { error: updateError } = await supabase
               .from('orders')
@@ -77,12 +75,12 @@ const PaymentSuccessPage: React.FC = () => {
                 status: 'processing'
               })
               .eq('order_number', order);
-            
+
             if (updateError) {
               throw updateError;
             }
           }
-          
+
           setOrderNumber(orderData.order_number);
           clearCart(); // Clear the cart after successful payment
           toast.success('Payment successful!');
@@ -98,7 +96,7 @@ const PaymentSuccessPage: React.FC = () => {
     
     processPayment();
   }, [searchParams, clearCart]);
-  
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">

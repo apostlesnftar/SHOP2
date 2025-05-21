@@ -106,7 +106,8 @@ const SharedOrderPage: React.FC = () => {
 
       const hours = Math.floor(diff / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      setTimeLeft(${hours}h ${minutes}m);
+     setTimeLeft(`${hours}h ${minutes}m`);
+
     };
 
     updateTimeLeft();

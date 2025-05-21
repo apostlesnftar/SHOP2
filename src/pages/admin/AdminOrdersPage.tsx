@@ -107,7 +107,7 @@ const AdminOrdersPage = () => {
       const { error } = await supabase
         .from('orders')
         .update({ status: newStatus })
-        .eq('orders.id', orderId); // Fixed: Explicitly reference orders.id
+        .eq('id', orderId); // Fixed: Use 'id' instead of 'orders.id'
 
       if (error) throw error;
 
@@ -124,7 +124,7 @@ const AdminOrdersPage = () => {
       const { error } = await supabase
         .from('orders')
         .update({ payment_status: newStatus })
-        .eq('orders.id', orderId); // Fixed: Explicitly reference orders.id
+        .eq('id', orderId); // Fixed: Use 'id' instead of 'orders.id'
 
       if (error) throw error;
 
@@ -141,7 +141,7 @@ const AdminOrdersPage = () => {
       const { error } = await supabase
         .from('orders')
         .update({ tracking_number: trackingNumber })
-        .eq('orders.id', orderId); // Fixed: Explicitly reference orders.id
+        .eq('id', orderId); // Fixed: Use 'id' instead of 'orders.id'
 
       if (error) throw error;
 

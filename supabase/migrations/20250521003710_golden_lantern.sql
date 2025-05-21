@@ -1,0 +1,440 @@
+-- Drop the existing function if it exists
+DROP FUNCTION IF EXISTS process_friend_payment(p_share_id text, p_payment_method text);
+
+-- Recreate the function with test payment support and test_mode detection
+CREATE OR REPLACE FUNCTION process_friend_payment(
+  p_share_id text,
+  p_payment_method text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_order_id uuid;
+  v_user_id uuid;
+  v_order_total numeric;
+  v_valid_payment_method boolean;
+  v_is_test_mode boolean;
+  v_shared_referrer_id uuid; -- Renamed to avoid ambiguity
+  v_order_number text;
+  v_agent_commission_rate numeric;
+  v_agent_commission numeric;
+  v_parent_agent_id uuid;
+  v_parent_commission_rate numeric;
+  v_parent_commission numeric;
+  v_transaction_id uuid;
+  v_parent_transaction_id uuid;
+BEGIN
+  -- Special handling for test payment method
+  IF LOWER(p_payment_method) = 'test' THEN
+    -- Get shared order details for test payment
+    SELECT 
+      so.order_id,
+      o.user_id,
+      o.order_number,
+      so.referrer_id,
+      o.total
+    INTO 
+      v_order_id,
+      v_user_id,
+      v_order_number,
+      v_shared_referrer_id,
+      v_order_total
+    FROM shared_orders so
+    JOIN orders o ON o.id = so.order_id
+    WHERE so.share_id = p_share_id
+    AND so.expires_at > now()
+    AND so.status = 'pending'
+    AND o.payment_status = 'pending';
+    
+    -- Validate shared order
+    IF v_order_id IS NULL THEN
+      RETURN jsonb_build_object(
+        'success', false,
+        'error', 'Shared order not found, expired, or already paid'
+      );
+    END IF;
+    
+    -- Update order status for test payment
+    UPDATE orders
+    SET 
+      payment_status = 'completed',
+      status = 'processing',
+      payment_method = 'test_payment'
+    WHERE id = v_order_id;
+    
+    -- Create audit log for test payment
+    INSERT INTO order_audit_logs (
+      order_id,
+      user_id,
+      old_status,
+      new_status,
+      old_payment_status,
+      new_payment_status,
+      notes
+    ) VALUES (
+      v_order_id,
+      v_user_id,
+      'pending',
+      'processing',
+      'pending',
+      'completed',
+      'Order payment completed via test payment method'
+    );
+    
+    -- Update shared order status
+    UPDATE shared_orders
+    SET 
+      status = 'completed',
+      updated_at = now()
+    WHERE share_id = p_share_id;
+    
+    -- Process commissions for test payment too
+    -- If user has a referrer, create commission for the referrer
+    IF v_shared_referrer_id IS NOT NULL THEN
+      -- Get the referrer's commission rate and parent
+      SELECT a.commission_rate, a.parent_agent_id 
+      INTO v_agent_commission_rate, v_parent_agent_id
+      FROM agents a
+      WHERE a.user_id = v_shared_referrer_id;
+      
+      -- If referrer is an agent, calculate commission
+      IF v_agent_commission_rate IS NOT NULL THEN
+        -- Calculate commission
+        v_agent_commission := (v_order_total * v_agent_commission_rate / 100);
+        
+        -- Create commission record
+        INSERT INTO commissions (agent_id, order_id, amount, status)
+        VALUES (v_shared_referrer_id, v_order_id, v_agent_commission, 'pending');
+        
+        -- Create wallet transaction record
+        INSERT INTO wallet_transactions (
+          agent_id,
+          amount,
+          type,
+          status,
+          reference_id,
+          notes,
+          completed_at
+        ) VALUES (
+          v_shared_referrer_id,
+          v_agent_commission,
+          'commission',
+          'completed',
+          v_order_id,
+          'Commission from test payment order #' || v_order_number,
+          NOW()
+        ) RETURNING id INTO v_transaction_id;
+        
+        -- Update agent total earnings and balance
+        UPDATE agents
+        SET total_earnings = total_earnings + v_agent_commission,
+            current_balance = current_balance + v_agent_commission
+        WHERE user_id = v_shared_referrer_id;
+        
+        -- If there's a parent agent, calculate their commission too
+        IF v_parent_agent_id IS NOT NULL THEN
+          -- Get parent's commission rate
+          SELECT a.commission_rate INTO v_parent_commission_rate
+          FROM agents a 
+          WHERE a.user_id = v_parent_agent_id;
+          
+          v_parent_commission := (v_order_total * v_parent_commission_rate / 200); -- Half the normal rate for the parent
+          
+          -- Create commission record for parent
+          INSERT INTO commissions (agent_id, order_id, amount, status)
+          VALUES (v_parent_agent_id, v_order_id, v_parent_commission, 'pending');
+          
+          -- Create wallet transaction record for parent
+          INSERT INTO wallet_transactions (
+            agent_id,
+            amount,
+            type,
+            status,
+            reference_id,
+            notes,
+            completed_at
+          ) VALUES (
+            v_parent_agent_id,
+            v_parent_commission,
+            'commission',
+            'completed',
+            v_order_id,
+            'Team commission from test payment order #' || v_order_number,
+            NOW()
+          ) RETURNING id INTO v_parent_transaction_id;
+          
+          -- Update parent agent total earnings and balance
+          UPDATE agents
+          SET total_earnings = total_earnings + v_parent_commission,
+              current_balance = current_balance + v_parent_commission
+          WHERE user_id = v_parent_agent_id;
+        END IF;
+      END IF;
+    END IF;
+    
+    -- Return success for test payment
+    RETURN jsonb_build_object(
+      'success', true,
+      'order_id', v_order_id,
+      'order_number', v_order_number,
+      'message', 'Test payment processed successfully'
+    );
+  END IF;
+  
+  -- Regular payment processing for non-test methods
+  -- Get shared order with explicit column selection and aliases to avoid ambiguity
+  SELECT 
+    so.order_id,
+    so.referrer_id, -- Explicitly qualified with table alias
+    COALESCE(so.order_number, o.order_number) AS order_number, -- Use COALESCE to handle NULL
+    o.user_id,
+    o.total
+  INTO 
+    v_order_id,
+    v_shared_referrer_id, -- Store in uniquely named variable
+    v_order_number,
+    v_user_id,
+    v_order_total
+  FROM shared_orders so
+  JOIN orders o ON o.id = so.order_id
+  WHERE so.share_id = p_share_id
+  AND so.expires_at > now()
+  AND so.status = 'pending'
+  AND o.payment_method = 'friend_payment'
+  AND o.payment_status = 'pending';
+  
+  -- Validate shared order
+  IF v_order_id IS NULL THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Shared order not found, expired, or already paid'
+    );
+  END IF;
+  
+  -- Check if payment method is valid and if it's in test mode
+  SELECT 
+    EXISTS(
+      SELECT 1 FROM (
+        -- Get available payment methods from payment_gateways
+        SELECT 
+          CASE 
+            WHEN provider = 'stripe' THEN 'credit_card'
+            WHEN provider = 'custom' THEN name
+            ELSE provider
+          END as method,
+          test_mode
+        FROM payment_gateways
+        WHERE is_active = true
+        
+        UNION ALL
+        
+        -- Add acacia_pay as a valid method
+        SELECT 'acacia_pay' as method, false as test_mode
+      ) methods
+      WHERE LOWER(methods.method) = LOWER(p_payment_method)
+    ),
+    EXISTS(
+      SELECT 1 FROM payment_gateways
+      WHERE (
+        CASE 
+          WHEN provider = 'stripe' THEN 'credit_card'
+          WHEN provider = 'custom' THEN name
+          ELSE provider
+        END = p_payment_method
+        OR LOWER(CASE 
+          WHEN provider = 'stripe' THEN 'credit_card'
+          WHEN provider = 'custom' THEN name
+          ELSE provider
+        END) = LOWER(p_payment_method)
+      )
+      AND test_mode = true
+    )
+  INTO 
+    v_valid_payment_method,
+    v_is_test_mode;
+  
+  -- Validate payment method
+  IF NOT v_valid_payment_method THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Invalid payment method: ' || p_payment_method
+    );
+  END IF;
+  
+  -- If referrer_id is NULL in shared_orders, try to get it from user_profiles
+  -- This is a fallback in case shared_orders.referrer_id is not set
+  IF v_shared_referrer_id IS NULL THEN
+    SELECT up.referrer_id INTO v_shared_referrer_id
+    FROM user_profiles up
+    WHERE up.id = v_user_id;
+  END IF;
+  
+  -- Update order status
+  UPDATE orders
+  SET 
+    payment_status = 'completed',
+    status = 'processing',
+    payment_method = p_payment_method
+  WHERE id = v_order_id
+  AND payment_status = 'pending';
+  
+  -- Create audit log
+  INSERT INTO order_audit_logs (
+    order_id,
+    user_id,
+    old_status,
+    new_status,
+    old_payment_status,
+    new_payment_status,
+    notes
+  ) VALUES (
+    v_order_id,
+    v_user_id,
+    'pending',
+    'processing',
+    'pending',
+    'completed',
+    CASE 
+      WHEN v_is_test_mode THEN 'Order payment completed via test mode payment method: ' || p_payment_method
+      ELSE 'Order payment completed via shared payment link using ' || p_payment_method
+    END
+  );
+  
+  -- Update shared order status
+  UPDATE shared_orders
+  SET 
+    status = 'completed',
+    updated_at = now()
+  WHERE share_id = p_share_id;
+  
+  -- If user has a referrer, create commission for the referrer
+  IF v_shared_referrer_id IS NOT NULL THEN
+    -- Get the referrer's commission rate and parent
+    SELECT a.commission_rate, a.parent_agent_id 
+    INTO v_agent_commission_rate, v_parent_agent_id
+    FROM agents a
+    WHERE a.user_id = v_shared_referrer_id;
+    
+    -- If referrer is an agent, calculate commission
+    IF v_agent_commission_rate IS NOT NULL THEN
+      -- Calculate commission
+      v_agent_commission := (v_order_total * v_agent_commission_rate / 100);
+      
+      -- Create commission record
+      INSERT INTO commissions (agent_id, order_id, amount, status)
+      VALUES (v_shared_referrer_id, v_order_id, v_agent_commission, 'pending');
+      
+      -- Create wallet transaction record
+      INSERT INTO wallet_transactions (
+        agent_id,
+        amount,
+        type,
+        status,
+        reference_id,
+        notes,
+        completed_at
+      ) VALUES (
+        v_shared_referrer_id,
+        v_agent_commission,
+        'commission',
+        'completed',
+        v_order_id,
+        'Commission from shared order #' || v_order_number,
+        NOW()
+      ) RETURNING id INTO v_transaction_id;
+      
+      -- Update agent total earnings and balance
+      UPDATE agents
+      SET total_earnings = total_earnings + v_agent_commission,
+          current_balance = current_balance + v_agent_commission
+      WHERE user_id = v_shared_referrer_id;
+      
+      -- If there's a parent agent, calculate their commission too
+      IF v_parent_agent_id IS NOT NULL THEN
+        -- Get parent's commission rate
+        SELECT a.commission_rate INTO v_parent_commission_rate
+        FROM agents a 
+        WHERE a.user_id = v_parent_agent_id;
+        
+        v_parent_commission := (v_order_total * v_parent_commission_rate / 200); -- Half the normal rate for the parent
+        
+        -- Create commission record for parent
+        INSERT INTO commissions (agent_id, order_id, amount, status)
+        VALUES (v_parent_agent_id, v_order_id, v_parent_commission, 'pending');
+        
+        -- Create wallet transaction record for parent
+        INSERT INTO wallet_transactions (
+          agent_id,
+          amount,
+          type,
+          status,
+          reference_id,
+          notes,
+          completed_at
+        ) VALUES (
+          v_parent_agent_id,
+          v_parent_commission,
+          'commission',
+          'completed',
+          v_order_id,
+          'Team commission from shared order #' || v_order_number,
+          NOW()
+        ) RETURNING id INTO v_parent_transaction_id;
+        
+        -- Update parent agent total earnings and balance
+        UPDATE agents
+        SET total_earnings = total_earnings + v_parent_commission,
+            current_balance = current_balance + v_parent_commission
+        WHERE user_id = v_parent_agent_id;
+      END IF;
+    END IF;
+  END IF;
+  
+  -- Return success message with additional info for test mode
+  RETURN jsonb_build_object(
+    'success', true,
+    'order_id', v_order_id,
+    'order_number', v_order_number,
+    'test_mode', v_is_test_mode
+  );
+END;
+$$;
+
+-- Create a function to get valid payment methods
+CREATE OR REPLACE FUNCTION get_valid_payment_methods()
+RETURNS TABLE (
+  method text,
+  test_mode boolean
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    CASE 
+      WHEN provider = 'stripe' THEN 'credit_card'
+      WHEN provider = 'custom' THEN name
+      ELSE provider
+    END as method,
+    pg.test_mode
+  FROM payment_gateways pg
+  WHERE pg.is_active = true
+  
+  UNION ALL
+  
+  -- Add acacia_pay as a valid method
+  SELECT 'acacia_pay' as method, false as test_mode
+  
+  UNION ALL
+  
+  -- Add test as a valid method
+  SELECT 'test' as method, true as test_mode;
+END;
+$$;
+
+-- Grant execute permissions
+GRANT EXECUTE ON FUNCTION process_friend_payment(text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_valid_payment_methods() TO authenticated;

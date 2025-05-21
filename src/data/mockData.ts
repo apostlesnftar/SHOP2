@@ -1,0 +1,390 @@
+import { Product, Category, Order, OrderItem, Commission, Agent } from '../types';
+
+// Mock Categories
+export const mockCategories: Category[] = [
+  {
+    id: 'cat1',
+    name: 'Electronics',
+    description: 'Latest gadgets and electronic devices',
+    imageUrl: 'https://images.pexels.com/photos/325153/pexels-photo-325153.jpeg?auto=compress&cs=tinysrgb&w=800',
+  },
+  {
+    id: 'cat2',
+    name: 'Clothing',
+    description: 'Fashion items for all occasions',
+    imageUrl: 'https://images.pexels.com/photos/934063/pexels-photo-934063.jpeg?auto=compress&cs=tinysrgb&w=800',
+  },
+  {
+    id: 'cat3',
+    name: 'Home & Kitchen',
+    description: 'Everything you need for your home',
+    imageUrl: 'https://images.pexels.com/photos/1643383/pexels-photo-1643383.jpeg?auto=compress&cs=tinysrgb&w=800',
+  },
+  {
+    id: 'cat4',
+    name: 'Beauty',
+    description: 'Skincare, makeup, and personal care',
+    imageUrl: 'https://images.pexels.com/photos/3373736/pexels-photo-3373736.jpeg?auto=compress&cs=tinysrgb&w=800',
+  },
+  {
+    id: 'cat5',
+    name: 'Sports',
+    description: 'Sporting goods and fitness equipment',
+    imageUrl: 'https://images.pexels.com/photos/3755440/pexels-photo-3755440.jpeg?auto=compress&cs=tinysrgb&w=800',
+  },
+  {
+    id: 'cat6',
+    name: 'Books',
+    description: 'Books for all interests',
+    imageUrl: 'https://images.pexels.com/photos/415071/pexels-photo-415071.jpeg?auto=compress&cs=tinysrgb&w=800',
+  },
+  {
+    id: 'cat7',
+    name: 'Toys & Games',
+    description: 'Fun for all ages',
+    imageUrl: 'https://images.pexels.com/photos/163036/mario-luigi-yoschi-figures-163036.jpeg?auto=compress&cs=tinysrgb&w=800',
+  },
+  {
+    id: 'cat8',
+    name: 'Jewelry',
+    description: 'Fine jewelry and accessories',
+    imageUrl: 'https://images.pexels.com/photos/248077/pexels-photo-248077.jpeg?auto=compress&cs=tinysrgb&w=800',
+  },
+];
+
+// Mock Products
+export const mockProducts: Product[] = [
+  {
+    id: '123e4567-e89b-12d3-a456-426614174000',
+    name: 'Smartphone X Pro',
+    description: 'Latest smartphone with advanced features and high-resolution camera. Enjoy fast processing, long battery life, and expandable storage options.',
+    price: 999.99,
+    images: [
+      'https://images.pexels.com/photos/1647976/pexels-photo-1647976.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/404280/pexels-photo-404280.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/1092644/pexels-photo-1092644.jpeg?auto=compress&cs=tinysrgb&w=800',
+    ],
+    categoryId: 'cat1',
+    inventory: 50,
+    discount: 10,
+    featured: true,
+    createdAt: '2023-01-01T12:00:00Z',
+    updatedAt: '2023-01-10T15:30:00Z',
+  },
+  {
+    id: '123e4567-e89b-12d3-a456-426614174001',
+    name: 'Wireless Headphones',
+    description: 'Premium noise-cancelling wireless headphones with amazing sound quality and 30-hour battery life. Comfortable for all-day wear with cushioned ear cups and adjustable headband.',
+    price: 249.99,
+    images: [
+      'https://images.pexels.com/photos/577769/pexels-photo-577769.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/1649771/pexels-photo-1649771.jpeg?auto=compress&cs=tinysrgb&w=800',
+    ],
+    categoryId: 'cat1',
+    inventory: 100,
+    featured: true,
+    createdAt: '2023-01-05T10:00:00Z',
+    updatedAt: '2023-01-15T14:00:00Z',
+  },
+  {
+    id: '123e4567-e89b-12d3-a456-426614174002',
+    name: 'Designer Watch',
+    description: 'Elegant designer watch with premium materials and precision movement. Water-resistant up to 50 meters with sapphire crystal glass and genuine leather strap.',
+    price: 399.99,
+    images: [
+      'https://images.pexels.com/photos/190819/pexels-photo-190819.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/277390/pexels-photo-277390.jpeg?auto=compress&cs=tinysrgb&w=800',
+    ],
+    categoryId: 'cat8',
+    inventory: 30,
+    discount: 15,
+    featured: true,
+    createdAt: '2023-01-10T09:15:00Z',
+    updatedAt: '2023-01-20T11:45:00Z',
+  },
+  {
+    id: '123e4567-e89b-12d3-a456-426614174003',
+    name: 'Cotton T-Shirt',
+    description: '100% organic cotton t-shirt, comfortable and stylish for everyday wear. Pre-shrunk fabric with reinforced stitching for durability and longevity.',
+    price: 24.99,
+    images: [
+      'https://images.pexels.com/photos/428340/pexels-photo-428340.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/996329/pexels-photo-996329.jpeg?auto=compress&cs=tinysrgb&w=800',
+    ],
+    categoryId: 'cat2',
+    inventory: 200,
+    featured: false,
+    createdAt: '2023-01-15T08:30:00Z',
+    updatedAt: '2023-01-25T16:20:00Z',
+  },
+  {
+    id: '123e4567-e89b-12d3-a456-426614174004',
+    name: 'Smart Coffee Maker',
+    description: 'WiFi-enabled smart coffee maker with programmable brewing schedules and customizable strength settings. Control with your smartphone or voice assistant.',
+    price: 149.99,
+    images: [
+      'https://images.pexels.com/photos/6316056/pexels-photo-6316056.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/7657235/pexels-photo-7657235.jpeg?auto=compress&cs=tinysrgb&w=800',
+    ],
+    categoryId: 'cat3',
+    inventory: 75,
+    discount: 20,
+    featured: true,
+    createdAt: '2023-01-20T13:45:00Z',
+    updatedAt: '2023-02-01T10:10:00Z',
+  },
+  {
+    id: '123e4567-e89b-12d3-a456-426614174005',
+    name: 'Skincare Set',
+    description: 'Complete skincare set with cleanser, toner, serum, and moisturizer. Made with natural ingredients suitable for all skin types. Cruelty-free and paraben-free formulation.',
+    price: 89.99,
+    images: [
+      'https://images.pexels.com/photos/4465124/pexels-photo-4465124.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/3785147/pexels-photo-3785147.jpeg?auto=compress&cs=tinysrgb&w=800',
+    ],
+    categoryId: 'cat4',
+    inventory: 60,
+    featured: true,
+    createdAt: '2023-01-25T11:20:00Z',
+    updatedAt: '2023-02-05T09:30:00Z',
+  },
+  {
+    id: '123e4567-e89b-12d3-a456-426614174006',
+    name: 'Yoga Mat',
+    description: 'Non-slip yoga mat with perfect cushioning for all types of yoga practices. Eco-friendly materials with alignment markings to help with proper positioning.',
+    price: 49.99,
+    images: [
+      'https://images.pexels.com/photos/4498555/pexels-photo-4498555.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/4056723/pexels-photo-4056723.jpeg?auto=compress&cs=tinysrgb&w=800',
+    ],
+    categoryId: 'cat5',
+    inventory: 120,
+    discount: 5,
+    featured: false,
+    createdAt: '2023-02-01T14:00:00Z',
+    updatedAt: '2023-02-10T12:15:00Z',
+  },
+  {
+    id: '123e4567-e89b-12d3-a456-426614174007',
+    name: 'Bestselling Novel',
+    description: 'Award-winning novel that has topped bestseller charts for months. Immersive storytelling with complex characters and unexpected plot twists.',
+    price: 19.99,
+    images: [
+      'https://images.pexels.com/photos/1765033/pexels-photo-1765033.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/159866/books-book-pages-read-literature-159866.jpeg?auto=compress&cs=tinysrgb&w=800',
+    ],
+    categoryId: 'cat6',
+    inventory: 150,
+    featured: true,
+    createdAt: '2023-02-05T09:45:00Z',
+    updatedAt: '2023-02-15T11:30:00Z',
+  },
+  {
+    id: '123e4567-e89b-12d3-a456-426614174008',
+    name: 'Board Game Collection',
+    description: 'Family board game collection with 5 classic games for hours of entertainment. Suitable for ages 8 and up, perfect for family game nights.',
+    price: 59.99,
+    images: [
+      'https://images.pexels.com/photos/776654/pexels-photo-776654.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/957312/chess-checkmated-chess-pieces-black-white-957312.jpeg?auto=compress&cs=tinysrgb&w=800',
+    ],
+    categoryId: 'cat7',
+    inventory: 40,
+    featured: false,
+    createdAt: '2023-02-10T15:30:00Z',
+    updatedAt: '2023-02-20T13:45:00Z',
+  },
+  {
+    id: '123e4567-e89b-12d3-a456-426614174009',
+    name: 'Silver Pendant Necklace',
+    description: 'Handcrafted sterling silver pendant necklace with delicate chain. Elegant design that matches any outfit, comes in a gift box perfect for special occasions.',
+    price: 129.99,
+    images: [
+      'https://images.pexels.com/photos/1457801/pexels-photo-1457801.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/10922153/pexels-photo-10922153.jpeg?auto=compress&cs=tinysrgb&w=800',
+    ],
+    categoryId: 'cat8',
+    inventory: 25,
+    discount: 10,
+    featured: true,
+    createdAt: '2023-02-15T10:15:00Z',
+    updatedAt: '2023-02-25T16:00:00Z',
+  },
+  {
+    id: '123e4567-e89b-12d3-a456-426614174010',
+    name: 'Tablet Pro',
+    description: 'Lightweight tablet with stunning display and all-day battery life. Perfect for work, creativity, and entertainment with powerful processor and versatile accessories.',
+    price: 699.99,
+    images: [
+      'https://images.pexels.com/photos/1334597/pexels-photo-1334597.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/2363239/pexels-photo-2363239.jpeg?auto=compress&cs=tinysrgb&w=800',
+    ],
+    categoryId: 'cat1',
+    inventory: 35,
+    discount: 15,
+    featured: false,
+    createdAt: '2023-02-20T12:30:00Z',
+    updatedAt: '2023-03-01T14:15:00Z',
+  },
+  {
+    id: '123e4567-e89b-12d3-a456-426614174011',
+    name: 'Winter Jacket',
+    description: 'Warm winter jacket with water-resistant exterior and thermal insulation. Adjustable hood and multiple pockets for functionality without sacrificing style.',
+    price: 199.99,
+    images: [
+      'https://images.pexels.com/photos/6770028/pexels-photo-6770028.jpeg?auto=compress&cs=tinysrgb&w=800',
+      'https://images.pexels.com/photos/5698851/pexels-photo-5698851.jpeg?auto=compress&cs=tinysrgb&w=800',
+    ],
+    categoryId: 'cat2',
+    inventory: 80,
+    featured: false,
+    createdAt: '2023-02-25T11:45:00Z',
+    updatedAt: '2023-03-05T13:30:00Z',
+  },
+];
+
+// Subset of featured products
+export const mockFeaturedProducts = mockProducts.filter(product => product.featured);
+
+// Mock Orders
+export const mockOrders: Order[] = [
+  {
+    id: 'order1',
+    userId: '1',
+    items: [
+      {
+        id: 'item1',
+        orderId: 'order1',
+        productId: 'prod1',
+        product: mockProducts[0],
+        quantity: 1,
+        price: mockProducts[0].price * 0.9, // With discount
+      },
+      {
+        id: 'item2',
+        orderId: 'order1',
+        productId: 'prod2',
+        product: mockProducts[1],
+        quantity: 1,
+        price: mockProducts[1].price,
+      },
+    ],
+    status: 'delivered',
+    shippingAddressId: 'addr1',
+    paymentMethod: 'credit_card',
+    paymentStatus: 'completed',
+    subtotal: (mockProducts[0].price * 0.9) + mockProducts[1].price,
+    tax: ((mockProducts[0].price * 0.9) + mockProducts[1].price) * 0.08,
+    shipping: 10,
+    total: ((mockProducts[0].price * 0.9) + mockProducts[1].price) * 1.08 + 10,
+    createdAt: '2023-03-01T10:00:00Z',
+    updatedAt: '2023-03-05T15:30:00Z',
+    trackingNumber: 'TRK123456789',
+  },
+  {
+    id: 'order2',
+    userId: '1',
+    items: [
+      {
+        id: 'item3',
+        orderId: 'order2',
+        productId: 'prod5',
+        product: mockProducts[4],
+        quantity: 1,
+        price: mockProducts[4].price * 0.8, // With discount
+      },
+    ],
+    status: 'processing',
+    shippingAddressId: 'addr1',
+    paymentMethod: 'paypal',
+    paymentStatus: 'completed',
+    subtotal: mockProducts[4].price * 0.8,
+    tax: (mockProducts[4].price * 0.8) * 0.08,
+    shipping: 10,
+    total: (mockProducts[4].price * 0.8) * 1.08 + 10,
+    createdAt: '2023-03-10T14:20:00Z',
+    updatedAt: '2023-03-11T09:15:00Z',
+  },
+];
+
+// Mock Agent Data
+export const mockAgents: Agent[] = [
+  {
+    userId: '2',
+    level: 2,
+    parentAgentId: undefined,
+    commissionRate: 10,
+    totalEarnings: 1250.75,
+    currentBalance: 450.25,
+    status: 'active',
+  },
+  {
+    userId: '5',
+    level: 1,
+    parentAgentId: '2',
+    commissionRate: 5,
+    totalEarnings: 350.50,
+    currentBalance: 100.75,
+    status: 'active',
+  },
+];
+
+// Mock Commission Data
+export const mockCommissions: Commission[] = [
+  {
+    id: 'comm1',
+    agentId: '2',
+    orderId: 'order1',
+    amount: 124.99,
+    status: 'paid',
+    createdAt: '2023-03-02T10:30:00Z',
+    paidAt: '2023-03-09T15:00:00Z',
+  },
+  {
+    id: 'comm2',
+    agentId: '2',
+    orderId: 'order2',
+    amount: 12.00,
+    status: 'pending',
+    createdAt: '2023-03-11T09:45:00Z',
+  },
+  {
+    id: 'comm3',
+    agentId: '5',
+    orderId: 'order2',
+    amount: 6.00,
+    status: 'pending',
+    createdAt: '2023-03-11T09:45:00Z',
+  },
+];
+
+// Mock Agent Team Structure
+export const mockAgentTeam = [
+  {
+    id: '5',
+    name: 'Sarah Johnson',
+    email: 'sarah@example.com',
+    level: 1,
+    joinDate: '2023-02-15T10:00:00Z',
+    totalSales: 1200.50,
+    totalCommission: 60.03,
+  },
+  {
+    id: '6',
+    name: 'David Williams',
+    email: 'david@example.com',
+    level: 1,
+    joinDate: '2023-02-20T14:30:00Z',
+    totalSales: 950.25,
+    totalCommission: 47.51,
+  },
+  {
+    id: '7',
+    name: 'Emily Brown',
+    email: 'emily@example.com',
+    level: 1,
+    joinDate: '2023-03-05T09:15:00Z',
+    totalSales: 500.00,
+    totalCommission: 25.00,
+  },
+];

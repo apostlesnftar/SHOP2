@@ -150,11 +150,16 @@ export const useAuthStore = create<AuthState>()(
       
       refreshUser: async () => {
         try {
+          // Get the current session first
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          // Get the user profile data
           const user = await getCurrentUser();
           
-          if (user) {
+          if (user && session) {
             set({ 
               user,
+              token: session.access_token,
               isAuthenticated: true,
               error: null
             });
@@ -177,8 +182,7 @@ export const useAuthStore = create<AuthState>()(
       clearError: () => set({ error: null }),
     }),
     {
-      name: 'auth-storage',
-      // Only store non-sensitive data
+      name: 'auth-storage-v1', // Added version to name to ensure unique storage
       partialize: (state) => ({
         token: state.token,
         isAuthenticated: state.isAuthenticated,

@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase';
 import Badge from '../components/ui/Badge';
 import { createAcaciaPayOrder } from '../lib/payment/utils/acacia-pay';
 import { useAuthStore } from '../store/auth-store';
+import { initializeAuth } from '../store/auth-store';
 
 const SharedOrderPage: React.FC = () => {
   const { shareId } = useParams<{ shareId: string }>();
@@ -30,6 +31,11 @@ const SharedOrderPage: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [timeLeft, setTimeLeft] = useState<string>('');
   const { user } = useAuthStore();
+
+  // Initialize auth when component mounts
+  useEffect(() => {
+    initializeAuth();
+  }, []);
 
   useEffect(() => {
     fetchPaymentMethods();

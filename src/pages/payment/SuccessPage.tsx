@@ -14,50 +14,40 @@ const PaymentSuccessPage: React.FC = () => {
   
   const [isLoading, setIsLoading] = useState(true);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
+  const [orderDetails, setOrderDetails] = useState<any | null>(null); // Store order details
   const [error, setError] = useState<string | null>(null);
 
-  const shareId = searchParams.get('share');
-
-  // Check if payment has been processed to avoid reprocessing
-  const isPaymentProcessed = localStorage.getItem('isPaymentProcessed') === 'true';
-
   useEffect(() => {
-    // If payment has already been processed, skip processing
-    if (isPaymentProcessed) {
-      setIsLoading(false);
-      return;
-    }
-
     const processPayment = async () => {
       try {
         setIsLoading(true);
         
-        if (shareId) {
-          console.log('Processing shared order payment:', shareId);
-
-          // Process the shared order payment
-          const { data, error } = await supabase.rpc('process_shared_order_payment', {
-            p_share_id: shareId,
-            p_payment_method: 'acacia_pay',
-            p_gateway_id: null
-          });
-
-          if (error) {
-            console.error('Error processing shared payment:', error);
-            throw error;
-          }
-
-          if (!data.success) {
-            console.error('Failed to process shared payment:', data.error);
-            throw new Error(data.error || 'Failed to process payment');
-          }
-
-          setOrderNumber(data.order_number);
-          clearCart(); // Clear the cart after successful payment
-          localStorage.setItem('isPaymentProcessed', 'true'); // Mark payment as processed
-          toast.success('Payment successful!');
-          navigate('/'); // Redirect to homepage
+        const shareId = searchParams.get('share');
+        if (!shareId) {
+          throw new Error('Share ID is missing');
         }
+
+        // 查询共享订单
+        const { data: orderData, error: orderError } = await supabase
+          .from('shared_orders')
+          .select('*')
+          .eq('share_id', shareId)
+          .eq('payment_status', 'completed')  // 确保支付状态是 completed
+          .single();  // 假设每个 share_id 只有一个订单
+
+        if (orderError) {
+          throw orderError;
+        }
+
+        if (!orderData) {
+          throw new Error('Shared order not found or already processed');
+        }
+
+        setOrderDetails(orderData);
+        setOrderNumber(orderData.order_number);
+        clearCart(); // Clear the cart after successful payment
+
+        toast.success('Payment successful!');
       } catch (err) {
         console.error('Error processing payment success:', err);
         setError(err instanceof Error ? err.message : 'An error occurred');
@@ -66,9 +56,9 @@ const PaymentSuccessPage: React.FC = () => {
         setIsLoading(false);
       }
     };
-
+    
     processPayment();
-  }, [searchParams, shareId, clearCart, navigate, isPaymentProcessed]);
+  }, [searchParams, clearCart]);
 
   if (isLoading) {
     return (
@@ -114,13 +104,18 @@ const PaymentSuccessPage: React.FC = () => {
             Thank you for your purchase. Your order has been confirmed.
           </p>
           
-          {orderNumber && (
+          {orderDetails && (
             <div className="bg-gray-50 rounded-lg p-4 mb-6">
               <p className="text-gray-700">
                 Order Number: <span className="font-semibold">{orderNumber}</span>
               </p>
+              <p className="text-gray-700">Order Total: <span className="font-semibold">${orderDetails.total}</span></p>
             </div>
           )}
+          
+          <Button onClick={() => navigate('/')}>
+            Return to Home
+          </Button>
         </CardContent>
       </Card>
     </div>

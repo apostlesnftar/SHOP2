@@ -222,11 +222,9 @@ const SharedOrderPage: React.FC = () => {
 
     // For other payment methods, handle the payment
     const { data, error } = await supabase.rpc('process_friend_payment', {
-  p_share_id: shareId,
-  p_payment_method: 'acacia_pay',
-  p_referrer_id: referrerId
-});
-
+      p_share_id: shareId,
+      p_payment_method: selectedPaymentMethod
+    });
 
     if (error) throw error;
 

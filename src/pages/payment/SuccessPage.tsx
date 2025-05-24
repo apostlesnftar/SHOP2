@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { CheckCircle, ArrowRight, Package, ShoppingBag } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import { supabase } from '../../lib/supabase';
@@ -11,90 +11,46 @@ const PaymentSuccessPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { clearCart } = useCartStore();
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Check if payment has been processed to avoid reprocessing
-  const isPaymentProcessed = localStorage.getItem('isPaymentProcessed') === 'true';
-
   useEffect(() => {
-    if (isPaymentProcessed) {
-      setIsLoading(false); // Skip processing if payment has already been handled
-      return;
-    }
-
-    const processPayment = async () => {
+    const verifyPaymentStatus = async () => {
+      setIsLoading(true);
       try {
-        setIsLoading(true);
-        
         const shareId = searchParams.get('share');
-        if (shareId) {
-          console.log('Processing shared order payment:', shareId);
-
-          // Process the shared order payment
-          const { data, error } = await supabase.rpc('process_shared_order_payment', {
-            p_share_id: shareId,
-            p_payment_method: 'acacia_pay',
-            p_gateway_id: null
-          });
-
-          if (error) {
-            console.error('Error processing shared payment:', error);
-            throw error;
-          }
-
-          if (!data.success) {
-            console.error('Failed to process shared payment:', data.error);
-            throw new Error(data.error || 'Failed to process payment');
-          }
-
-          setOrderNumber(data.order_number);
-          clearCart(); // Clear the cart after successful payment
-          localStorage.setItem('isPaymentProcessed', 'true'); // Mark payment as processed
-          toast.success('Payment successful!');
-          navigate('/'); // Redirect to homepage
-        } else {
-          // Regular order success
-          const order = searchParams.get('order');
-          if (!order) {
-            throw new Error('No order information found');
-          }
-
-          // Get order details from shared_orders table, filtered by status "processing"
-          const { data: orderData, error: orderError } = await supabase
-            .from('shared_orders')
-            .select('*')
-            .eq('share_id', shareId)  // Query by share_id
-            .eq('status', 'processing')  // Filter by status "processing"
-            .single();  // Only retrieve a single order
-
-          if (orderError) {
-            throw orderError;
-          }
-
-          if (!orderData) {
-            throw new Error('Order not found or not in processing state');
-          }
-
-          setOrderNumber(orderData.order_number);
-          clearCart(); // Clear the cart after successful payment
-          localStorage.setItem('isPaymentProcessed', 'true'); // Mark payment as processed
-          toast.success('Payment successful!');
-          navigate('/'); // Redirect to homepage
+        if (!shareId) {
+          throw new Error('Missing share ID');
         }
+
+        // 查询 shared_orders 表中是否已完成支付
+        const { data, error } = await supabase
+          .from('shared_orders')
+          .select('order_number, status')
+          .eq('share_id', shareId)
+          .single();
+
+        if (error) throw error;
+
+        if (!data || data.status !== 'completed') {
+          throw new Error('Payment not completed or invalid');
+        }
+
+        setOrderNumber(data.order_number);
+        clearCart();
+        toast.success('Payment confirmed!');
       } catch (err) {
-        console.error('Error processing payment success:', err);
+        console.error('Error confirming payment:', err);
         setError(err instanceof Error ? err.message : 'An error occurred');
-        toast.error('There was a problem processing your payment');
       } finally {
         setIsLoading(false);
       }
     };
-    
-    processPayment();
-  }, [searchParams, clearCart, navigate, isPaymentProcessed]);
+
+    verifyPaymentStatus();
+  }, [searchParams, clearCart]);
 
   if (isLoading) {
     return (
@@ -107,7 +63,7 @@ const PaymentSuccessPage: React.FC = () => {
       </div>
     );
   }
-  
+
   if (error) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
@@ -119,14 +75,12 @@ const PaymentSuccessPage: React.FC = () => {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Payment Error</h2>
           <p className="text-gray-600 mb-6">{error}</p>
-          <Button onClick={() => navigate('/cart')}>
-            Return to Cart
-          </Button>
+          <Button onClick={() => navigate('/cart')}>Return to Cart</Button>
         </div>
       </div>
     );
   }
-  
+
   return (
     <div className="container mx-auto px-4 py-16">
       <Card className="max-w-lg mx-auto">
@@ -134,12 +88,10 @@ const PaymentSuccessPage: React.FC = () => {
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-600 mx-auto mb-6">
             <CheckCircle className="h-8 w-8" />
           </div>
-          
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Payment Successful!</h1>
           <p className="text-gray-600 mb-6">
             Thank you for your purchase. Your order has been confirmed.
           </p>
-          
           {orderNumber && (
             <div className="bg-gray-50 rounded-lg p-4 mb-6">
               <p className="text-gray-700">
